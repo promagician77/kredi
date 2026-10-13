@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Credit Video Pipeline</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Nunito+Sans:wght@400;600&display=swap">
+  <style>
+    :root {
+      --bg: #f4f8f7;
+      --bg-alt: #e2eeea;
+      --text: #1a2e2a;
+      --text-muted: #5b7a72;
+      --primary: #0f766e;
+      --primary-lt: #14b8a6;
+      --accent: #d97706;
+      --accent-lt: #f59e0b;
+      --border: #c2d9d2;
+      --card: #ffffff;
+      --frame-bg: #0c1c1a;
+      --ok: #16a34a;
+      --err: #dc2626;
+      --font-d: 'Outfit', system-ui, sans-serif;
+      --font-b: 'Nunito Sans', system-ui, sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0d1917; --bg-alt: #152622; --text: #daeee8; --text-muted: #7faa9e;
+        --primary: #2dd4bf; --primary-lt: #5eead4; --accent: #fbbf24; --accent-lt: #fcd34d;
+        --border: #243d35; --card: #152622; --frame-bg: #0a1210;
+        --ok: #4ade80; --err: #f87171;
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0d1917; --bg-alt: #152622; --text: #daeee8; --text-muted: #7faa9e;
+      --primary: #2dd4bf; --primary-lt: #5eead4; --accent: #fbbf24; --accent-lt: #fcd34d;
+      --border: #243d35; --card: #152622; --frame-bg: #0a1210;
+      --ok: #4ade80; --err: #f87171;
+      color-scheme: dark;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-b); font-size: 15px; line-height: 1.6; }
+    h2 { font-family: var(--font-d); font-size: 22px; font-weight: 700; margin: 0 0 6px; color: var(--primary); text-wrap: balance; }
+    h3 { font-family: var(--font-d); font-size: 16px; font-weight: 600; margin: 24px 0 10px; text-wrap: balance; }
+    p { margin: 0 0 14px; max-width: 68ch; }
+
+    .wrap { max-width: 880px; margin: 0 auto; padding-inline: 20px; }
+
+    .hdr { background: var(--primary); color: #fff; padding: 24px 20px 20px; text-align: center; }
+    .hdr-label { font-family: var(--font-d); font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.65; margin-bottom: 4px; }
+    .hdr h1 { font-family: var(--font-d); font-size: 22px; font-weight: 700; margin: 0 0 4px; }
+    .hdr-sub { font-size: 13px; opacity: 0.75; font-family: var(--font-d); }
+
+    .tabs { position: sticky; top: 0; z-index: 10; background: var(--card); border-bottom: 1.5px solid var(--border); display: flex; overflow-x: auto; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tbtn { flex-shrink: 0; padding: 11px 20px; font-family: var(--font-d); font-size: 13px; font-weight: 500; color: var(--text-muted); border: none; background: none; cursor: pointer; border-bottom: 2.5px solid transparent; transition: color .15s, border-color .15s; }
+    .tbtn:hover { color: var(--text); }
+    .tbtn.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+    .pan { display: none; padding: 28px 0 36px; }
+    .pan.on { display: block; }
+
+    .pipe { display: flex; align-items: flex-start; gap: 0; flex-wrap: wrap; justify-content: center; margin: 20px 0 24px; }
+    .stp { background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; padding: 16px 14px; text-align: center; width: 130px; flex-shrink: 0; }
+    .stp-num { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; font-family: var(--font-d); font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; }
+    .stp-title { font-family: var(--font-d); font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .stp-desc { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
+    .stp-tool { font-size: 10px; color: var(--accent); font-weight: 600; font-family: var(--font-d); margin-top: 6px; letter-spacing: 0.02em; }
+    .stp-arr { color: var(--text-muted); font-size: 18px; padding: 24px 4px 0; flex-shrink: 0; }
+    @media (max-width: 700px) {
+      .stp-arr { transform: rotate(90deg); padding: 6px 0; }
+      .pipe { flex-direction: column; align-items: center; }
+      .stp { width: 200px; }
+    }
+
+    .cost-tbl { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0 20px; font-variant-numeric: tabular-nums; }
+    .cost-tbl th { font-family: var(--font-d); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; text-align: left; padding: 7px 10px; border-bottom: 2px solid var(--primary); color: var(--primary); }
+    .cost-tbl td { padding: 6px 10px; border-bottom: 1px solid var(--border); }
+
+    .tmpl-grid { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin: 20px 0 24px; }
+    .vframe { background: var(--frame-bg); border-radius: 14px; overflow: hidden; width: 210px; flex-shrink: 0; border: 1px solid var(--border); }
+    .vframe-body { padding: 24px 16px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 280px; }
+    .vframe-sub { background: rgba(0,0,0,0.65); color: #fff; padding: 10px 12px; font-size: 11.5px; text-align: center; line-height: 1.4; }
+    .vframe-label { font-family: var(--font-d); font-size: 12px; font-weight: 600; color: var(--text-muted); text-align: center; margin-top: 8px; }
+
+    .gauge svg { display: block; }
+    .gauge-score { font-family: var(--font-d); }
+    .gauge-label { font-family: var(--font-b); }
+    .gauge-range { display: flex; justify-content: space-between; width: 160px; margin-top: 2px; }
+    .gauge-range span { font-size: 9px; color: #8aa8a0; font-family: var(--font-d); font-weight: 500; }
+
+    .util { width: 160px; }
+    .util-header { display: flex; justify-content: space-between; font-size: 11px; color: #8aa8a0; margin-bottom: 6px; }
+    .util-track { height: 14px; background: #1a3330; border-radius: 7px; overflow: hidden; }
+    .util-fill { height: 100%; background: var(--primary-lt); border-radius: 7px; transition: width 0.3s; }
+    .util-pct { text-align: center; font-family: var(--font-d); font-size: 28px; font-weight: 700; color: var(--primary-lt); margin-top: 10px; }
+    .util-verdict { text-align: center; font-size: 11px; color: #4ade80; margin-top: 2px; }
+
+    .tl { display: flex; gap: 14px; align-items: flex-start; justify-content: center; position: relative; }
+    .tl::before { content: ''; position: absolute; top: 10px; left: 20px; right: 20px; height: 2px; background: #1a3330; }
+    .tl-m { text-align: center; position: relative; z-index: 1; }
+    .tl-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #1a3330; background: var(--frame-bg); margin: 0 auto 4px; }
+    .tl-m.paid .tl-dot { background: #16a34a; border-color: #16a34a; }
+    .tl-m.now .tl-dot { background: var(--accent-lt); border-color: var(--accent-lt); }
+    .tl-m.upcoming .tl-dot { background: var(--frame-bg); border-color: #2a4a42; }
+    .tl-label { font-size: 10px; color: #8aa8a0; font-family: var(--font-d); font-weight: 500; }
+
+    .form-mock { background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; padding: 24px; max-width: 440px; margin: 16px 0 20px; }
+    .field { margin-bottom: 16px; }
+    .field label { font-family: var(--font-d); font-size: 12px; font-weight: 600; display: block; margin-bottom: 5px; }
+    .field textarea, .field input[type="text"] { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 6px; font-family: var(--font-b); font-size: 13px; background: var(--bg); color: var(--text); resize: vertical; min-height: 60px; }
+    .file-box { border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px; cursor: pointer; }
+    .file-box:hover { border-color: var(--primary); }
+    .fmt-row { display: flex; gap: 8px; }
+    .fmt-opt { flex: 1; padding: 10px; border: 1.5px solid var(--border); border-radius: 6px; text-align: center; cursor: pointer; background: var(--bg); font-family: var(--font-d); font-size: 13px; font-weight: 500; transition: border-color .15s, background .15s; }
+    .fmt-opt.sel { border-color: var(--primary); background: var(--bg-alt); color: var(--primary); }
+    .fmt-opt span { display: block; font-size: 10px; color: var(--text-muted); margin-top: 2px; font-weight: 400; }
+    .submit-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: var(--primary); color: #fff; font-family: var(--font-d); font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; letter-spacing: 0.02em; }
+    .submit-btn:hover { opacity: 0.9; }
+
+    .callout { background: var(--bg-alt); border-left: 3px solid var(--accent); padding: 12px 14px; border-radius: 0 6px 6px 0; font-size: 13px; margin: 16px 0 20px; }
+
+    .ftr { text-align: center; padding: 28px 20px 14px; font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--border); margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="hdr">
+    <div class="hdr-label">Automated AI Workflow</div>
+    <h1>Haitian Creole Credit Education</h1>
+    <div class="hdr-sub">Script + Audio &rarr; Finished Social Media Video</div>
+  </div>
+
+  <nav class="tabs">
+    <button class="tbtn on" data-t="p-pipe">Pipeline</button>
+    <button class="tbtn" data-t="p-tmpl">Credit Templates</button>
+    <button class="tbtn" data-t="p-sub">Submit</button>
+  </nav>
+
+  <div class="wrap">
+
+    <!-- ====== PIPELINE ====== -->
+    <section id="p-pipe" class="pan on">
+      <h2>End-to-End Pipeline</h2>
+      <p>You provide a script and audio recording. The system handles everything else and returns a finished, subtitled video with your avatar and domain-accurate credit illustrations.</p>
+
+      <div class="pipe">
+        <div class="stp">
+          <div class="stp-num">1</div>
+          <div class="stp-title">Submit</div>
+          <div class="stp-desc">Upload Creole script + your audio recording</div>
+          <div class="stp-tool">Form / Airtable</div>
+        </div>
+        <div class="stp-arr">&rarr;</div>
+        <div class="stp">
+          <div class="stp-num">2</div>
+          <div class="stp-title">Analyze</div>
+          <div class="stp-desc">GPT reads script, identifies credit concepts per segment</div>
+          <div class="stp-tool">GPT-4o</div>
+        </div>
+        <div class="stp-arr">&rarr;</div>
+        <div class="stp">
+          <div class="stp-num">3</div>
+          <div class="stp-title">Avatar</div>
+          <div class="stp-desc">HeyGen syncs your avatar's lips to your Creole audio</div>
+          <div class="stp-tool">HeyGen API</div>
+        </div>
+        <div class="stp-arr">&rarr;</div>
+        <div class="stp">
+          <div class="stp-num">4</div>
+          <div class="stp-title">Illustrate</div>
+          <div class="stp-desc">Template library generates credit-specific visuals per scene</div>
+          <div class="stp-tool">Template Engine</div>
+        </div>
+        <div class="stp-arr">&rarr;</div>
+        <div class="stp">
+          <div class="stp-num">5</div>
+          <div class="stp-title">Subtitle</div>
+          <div class="stp-desc">Forced alignment times your script text to the audio</div>
+          <div class="stp-tool">Whisper + Align</div>
+        </div>
+        <div class="stp-arr">&rarr;</div>
+        <div class="stp">
+          <div class="stp-num">6</div>
+          <div class="stp-title">Export</div>
+          <div class="stp-desc">Avatar + visuals + subtitles composited into final video</div>
+          <div class="stp-tool">FFmpeg</div>
+        </div>
+      </div>
+
+      <h3>Estimated Ongoing Costs per Video</h3>
+      <p>These are the API and service costs you'll pay per video after the system is built:</p>
+      <div style="overflow-x:auto">
+        <table class="cost-tbl">
+          <tr><th>Service</th><th>Purpose</th><th>~Cost per 3-min video</th></tr>
+          <tr><td>HeyGen API</td><td>Avatar lip sync + rendering</td><td>$6 - $12</td></tr>
+          <tr><td>OpenAI GPT-4o</td><td>Script analysis + scene breakdown</td><td>$0.10 - $0.30</td></tr>
+          <tr><td>OpenAI Whisper</td><td>Audio alignment for subtitles</td><td>$0.04</td></tr>
+          <tr><td><strong>Total per video</strong></td><td></td><td><strong>~$7 - $13</strong></td></tr>
+        </table>
+      </div>
+
+      <div class="callout">
+        <strong>Why templates instead of DALL-E?</strong> AI image generators produce artistic illustrations, but credit education needs exact visuals: score ranges (300-850), utilization percentages, payment calendars. A template library renders these with real data pulled from your script, so every frame teaches correctly.
+      </div>
+    </section>
+
+    <!-- ====== CREDIT TEMPLATES ====== -->
+    <section id="p-tmpl" class="pan">
+      <h2>Credit Visual Templates</h2>
+      <p>Domain-specific visual components that appear in your videos. Each template is populated automatically from your script content &mdash; GPT identifies the concept, the engine fills in the right numbers and labels in Haitian Creole.</p>
+
+      <div class="tmpl-grid">
+        <!-- Score Gauge -->
+        <div>
+          <div class="vframe">
+            <div class="vframe-body">
+              <div class="gauge">
+                <svg viewBox="0 0 200 115" width="170" height="98">
+                  <path d="M 20,100 A 80,80 0 0,1 180,100" fill="none" stroke="#1a3330" stroke-width="14" stroke-linecap="round"/>
+                  <path d="M 20,100 A 80,80 0 0,1 159,46" fill="none" stroke="#14b8a6" stroke-width="14" stroke-linecap="round"/>
+                  <circle cx="159" cy="46" r="6" fill="#fbbf24"/>
+                  <text x="100" y="82" text-anchor="middle" font-family="Outfit,sans-serif" font-size="36" font-weight="700" fill="#e0f2f0">720</text>
+                  <text x="100" y="100" text-anchor="middle" font-family="Nunito Sans,sans-serif" font-size="11" fill="#7faa9e">Skor Kredi</text>
+                </svg>
+                <div class="gauge-range"><span>300</span><span>850</span></div>
+              </div>
+            </div>
+            <div class="vframe-sub">Skor kredi ou se 720 &mdash; sa se yon bon skor!</div>
+          </div>
+          <div class="vframe-label">Credit Score Gauge</div>
+        </div>
+
+        <!-- Utilization Bar -->
+        <div>
+          <div class="vframe">
+            <div class="vframe-body">
+              <div class="util">
+                <div class="util-header"><span>Itilize: $2,400</span><span>Limit: $8,000</span></div>
+                <div class="util-track"><div class="util-fill" style="width:30%"></div></div>
+                <div class="util-pct">30%</div>
+                <div class="util-verdict">Bon itilizasyon</div>
+              </div>
+            </div>
+            <div class="vframe-sub">Ou itilize 30% nan limit kredi ou &mdash; sa bon anpil!</div>
+          </div>
+          <div class="vframe-label">Credit Utilization</div>
+        </div>
+
+        <!-- Payment Timeline -->
+        <div>
+          <div class="vframe">
+            <div class="vframe-body">
+              <div class="tl">
+                <div class="tl-m paid"><div class="tl-dot"></div><div class="tl-label">Jan</div></div>
+                <div class="tl-m paid"><div class="tl-dot"></div><div class="tl-label">Fev</div></div>
+                <div class="tl-m paid"><div class="tl-dot"></div><div class="tl-label">Mas</div></div>
+                <div class="tl-m paid"><div class="tl-dot"></div><div class="tl-label">Avr</div></div>
+                <div class="tl-m now"><div class="tl-dot"></div><div class="tl-label">Me</div></div>
+                <div class="tl-m upcoming"><div class="tl-dot"></div><div class="tl-label">Jen</div></div>
+              </div>
+              <div style="text-align:center;margin-top:14px">
+                <div style="font-family:Outfit,sans-serif;font-size:24px;font-weight:700;color:#4ade80">4/4</div>
+                <div style="font-size:11px;color:#7faa9e">Peman a l&egrave;</div>
+              </div>
+            </div>
+            <div class="vframe-sub">Ou f&egrave; tout peman ou a l&egrave; &mdash; kontinye konsa!</div>
+          </div>
+          <div class="vframe-label">Payment Timeline</div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>Template vs. AI-generated:</strong> These visuals render from data, not from a prompt. When your script mentions "skor kredi 680," the gauge template shows exactly 680. When you explain utilization, the bar shows the exact percentage you describe. No hallucinated numbers, no artistic interpretation &mdash; accurate credit education.
+      </div>
+
+      <h3>Available Template Types</h3>
+      <div style="overflow-x:auto">
+        <table class="cost-tbl">
+          <tr><th>Template</th><th>Used when script mentions</th><th>Data pulled</th></tr>
+          <tr><td>Credit Score Gauge</td><td>score, skor kredi, rating</td><td>Score number, range label</td></tr>
+          <tr><td>Utilization Bar</td><td>utilization, limit, balans</td><td>Used amount, limit, percentage</td></tr>
+          <tr><td>Payment Timeline</td><td>peman, payment, on-time</td><td>Months paid, months remaining</td></tr>
+          <tr><td>Debt-to-Income Ratio</td><td>DTI, ratio, revni</td><td>Debt amount, income, percentage</td></tr>
+          <tr><td>Interest Rate Comparison</td><td>enter&egrave;, interest, APR</td><td>Rate A vs Rate B, savings</td></tr>
+          <tr><td>Credit Factor Breakdown</td><td>fakt&egrave;, factors, enp&ograve;tans</td><td>5 factor weights, labels</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ====== SUBMIT ====== -->
+    <section id="p-sub" class="pan">
+      <h2>Video Submission</h2>
+      <p>This is what your production workflow looks like after setup. Fill in the form, submit, and the pipeline delivers a finished video to your inbox or Google Drive.</p>
+
+      <div class="form-mock">
+        <div class="field">
+          <label>Script (Haitian Creole)</label>
+          <textarea id="scriptArea" rows="3">Jodi a, n ap pale sou skor kredi ou. Skor kredi ou se yon nimewo ant 300 ak 850 ki montre bank yo si ou ka peye d&egrave;t ou...</textarea>
+        </div>
+        <div class="field">
+          <label>Audio Recording</label>
+          <div class="file-box" id="fileBox">Drop your .mp3 or .wav file here, or click to browse</div>
+        </div>
+        <div class="field">
+          <label>Video Format</label>
+          <div class="fmt-row">
+            <div class="fmt-opt sel" data-f="9:16">9:16<span>Reels / TikTok</span></div>
+            <div class="fmt-opt" data-f="1:1">1:1<span>Instagram</span></div>
+            <div class="fmt-opt" data-f="16:9">16:9<span>YouTube</span></div>
+          </div>
+        </div>
+        <button class="submit-btn" id="genBtn">Generate Video</button>
+      </div>
+
+      <div class="callout" id="statusBox" hidden>
+        <strong>Pipeline running...</strong><br>
+        <span id="statusText">Analyzing script with GPT...</span>
+      </div>
+
+      <h3>After Setup, Your Workflow Is</h3>
+      <p>
+        <strong>1.</strong> Write your script in Haitian Creole.<br>
+        <strong>2.</strong> Record yourself reading it.<br>
+        <strong>3.</strong> Submit both in this form.<br>
+        <strong>4.</strong> Receive a finished video in your inbox within ~15 minutes.<br>
+        <strong>5.</strong> Post to Instagram, TikTok, YouTube, or Facebook.
+      </p>
+      <p>No editing software. No technical knowledge. Just your voice and your message.</p>
+    </section>
+
+  </div>
+
+  <footer class="ftr">
+    Prepared by Lucas &middot; Senior Systems Engineer<br>
+    Workflow demo for credit education video automation
+  </footer>
+
+  <script>
+    document.querySelectorAll('.tbtn').forEach(function(b) {
+      b.addEventListener('click', function() {
+        document.querySelectorAll('.tbtn').forEach(function(x) { x.classList.remove('on'); });
+        document.querySelectorAll('.pan').forEach(function(x) { x.classList.remove('on'); });
+        b.classList.add('on');
+        document.getElementById(b.dataset.t).classList.add('on');
+        try { localStorage.setItem('cv-tab', b.dataset.t); } catch(e) {}
+      });
+    });
+    try {
+      var s = localStorage.getItem('cv-tab');
+      if (s && document.getElementById(s)) {
+        document.querySelectorAll('.tbtn').forEach(function(b) { b.classList.toggle('on', b.dataset.t === s); });
+        document.querySelectorAll('.pan').forEach(function(p) { p.classList.toggle('on', p.id === s); });
+      }
+    } catch(e) {}
+
+    document.querySelectorAll('.fmt-opt').forEach(function(o) {
+      o.addEventListener('click', function() {
+        document.querySelectorAll('.fmt-opt').forEach(function(x) { x.classList.remove('sel'); });
+        o.classList.add('sel');
+      });
+    });
+
+    var steps = [
+      'Analyzing script with GPT...',
+      'Extracting credit concepts from each segment...',
+      'Sending audio to HeyGen for avatar sync...',
+      'Generating credit score gauge template...',
+      'Aligning subtitles to audio with Whisper...',
+      'Compositing video with FFmpeg...',
+      'Video complete! Delivering to your inbox.'
+    ];
+    document.getElementById('genBtn').addEventListener('click', function() {
+      var box = document.getElementById('statusBox');
+      var txt = document.getElementById('statusText');
+      box.hidden = false;
+      var i = 0;
+      txt.textContent = steps[0];
+      var iv = setInterval(function() {
+        i++;
+        if (i < steps.length) {
+          txt.textContent = steps[i];
+          if (i === steps.length - 1) {
+            box.querySelector('strong').textContent = 'Done!';
+            clearInterval(iv);
+          }
+        }
+      }, 1200);
+    });
+  </script>
+</body>
+</html>
